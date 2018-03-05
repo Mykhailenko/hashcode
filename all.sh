@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-gradle clean build
+#gradle clean build
 
-for filename in ./dataset/*; do
+for filepath in ./dataset/*; do
+    filename=`basename "$filepath"`
 
-    ./run.sh --in $filename  $@
+    ./run.sh --in $filepath --out ./best/$filename $@
 
 done
 

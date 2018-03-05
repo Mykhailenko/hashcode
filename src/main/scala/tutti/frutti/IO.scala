@@ -34,7 +34,9 @@ object IO {
     val writer = new PrintWriter(path)
 
     for (car <- simulator.cars) {
-      val sb = new StringBuffer(car.completedRides.size)
+      val sb = new StringBuffer()
+
+      sb.append(car.completedRides.size.toString)
 
       for (ride <- car.completedRides) {
         sb.append(separator + ride.id)
@@ -42,5 +44,7 @@ object IO {
 
       writer.write(sb.toString + "\n")
     }
+
+    writer.close
   }
 }
