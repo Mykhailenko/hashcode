@@ -46,6 +46,19 @@ class Simulator (val R : Int, val C : Int, val F : Int, val N : Int, val B : Int
         .minBy(x => x._2)._1
   }
 
+  def seqride(pos: Coord, time: Int, addMore : Int, ridesLeft : List[Ride]) : List[Ride] = {
+    if(addMore > 0 && ridesLeft.size > 0) {
+      val ride : Ride = null;
+      ride::seqride(pos, time, addMore - 1, ridesLeft)
+    } else {
+      List()
+    }
+  }
+
+
+  def timeWhenFinished
+
+
   def simulate() : Unit = {
     for(t <- 0 until T){
 
@@ -66,8 +79,9 @@ class Simulator (val R : Int, val C : Int, val F : Int, val N : Int, val B : Int
       var coord = new Coord()
 
       for(ride <- car.completedRides){
-        val newTime = ride.timeNeeded(coord, time)
-        val marginalCost = profit(coord, ride, time);
+        val metrics = ride.computeMetrics(coord, time)
+        val newTime = metrics.timeNeeded
+        val marginalCost = metrics.score
         coord = ride.finish
         time += newTime
         score += marginalCost
@@ -76,14 +90,6 @@ class Simulator (val R : Int, val C : Int, val F : Int, val N : Int, val B : Int
       score
     }).reduce(_ + _)
 
-  def profit(cord : Coord, ride : Ride, t : Int) : Int = {
-
-    val timeToArriveToStart = t + cord.dist(ride.start)
-    val apliedBonus = if(timeToArriveToStart == ride.ealiestStart) B else 0;
-    val profit = ride.length + apliedBonus
-
-    profit.toInt
-  }
 
   def k(car: Car, ride: Ride)(implicit t : Int) = {
     val timeToArriveToStart = t + car.current.dist(ride.start)
