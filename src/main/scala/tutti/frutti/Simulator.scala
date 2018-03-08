@@ -1,104 +1,101 @@
 package tutti.frutti
 
 import scala.collection.mutable
-;
 
 
+class Simulator(val R: Int, val C: Int, val F: Int, val N: Int, val B: Int, val T: Int) {
 
-class Simulator (val R : Int, val C : Int, val F : Int, val N : Int, val B : Int, val T : Int) {
 
+  var rides: mutable.MutableList[Ride] = new mutable.MutableList[Ride]
 
-  var rides : mutable.MutableList[Ride] = new mutable.MutableList[Ride]
+  var cars: mutable.MutableList[Car] = new mutable.MutableList[Car]
 
-  var cars : mutable.MutableList[Car] = new mutable.MutableList[Car]
+  def simulate(): Unit = {
+    for (t <- 0 until T) {
+      implicit val tt = t;
 
-  def tryAssign()(implicit t : Int): Boolean = {
-    val freeCars = cars.filter(_.isFree())
-    if(!freeCars.isEmpty && !rides.isEmpty){
-      for(car <- freeCars){
-        val ride = rideForCar(car)
-        rides = rides diff Seq (ride)
-        car.assignRide(ride)
-        return true
+      while (tryAssign()) {}
+
+      for (car <- cars) {
+        car.move()
       }
+    }
+  }
+
+  def tryAssign()(implicit t: Int): Boolean = {
+    val freeCars = cars.filter(_.isFree())
+    if (!freeCars.isEmpty && !rides.isEmpty) {
+      val car = freeCars.get(0).get;
+      val rds = rideForCar(car, 2)
+      rides = rides diff Seq(rds)
+      car.planRides(rds);
+      return true
     }
     return false
   }
 
+  def rideForCar(car: Car, desiredLen : Int)(implicit t : Int) : List[Ride] = {
+    return rides.map(ride => {
+      var ans = new mutable.MutableList[Ride]
+      val first = ride
+      ans += first
+      var score = first.computeMetrics(car.current, t).score
 
-  def closest(car: Car, ride: Ride) = car.current.dist(ride.start)
+      var time = t
+      var coord = first.finish
+      var restLen = desiredLen - 1
 
-  def timest(t: Int, ride: Ride) = if(t < ride.ealiestStart) ride.ealiestStart - t else 0
+      var ridesLeft = rides diff Seq(first)
 
-  def startes(car: Car, t: Int, ride: Ride) = Math.max(ride.ealiestStart - t, car.current.dist(ride.start))
+      while(restLen > 0 && !ridesLeft.isEmpty){
+        val newR : Ride = pickRide(coord, time, ridesLeft)
+        ridesLeft = ridesLeft diff Seq(newR)
+        ans += newR
+        val metr = newR.computeMetrics(coord, time, B)
+        time = metr.timeNeeded
+        coord = newR.finish
+        score += metr.score
+        restLen -= 1
+      }
 
-  def rideForCar(car: Car)(implicit t : Int): Ride = {
-      rides.map(ride => (ride,
-        Prop.algo match {
-          case "k" => k(car, ride)
-          case "closest" => closest(car, ride)
-          case "timest" => timest(t, ride)
-          case "startest" => startes(car, t, ride)
-        }
-
-
-        ))
-        .minBy(x => x._2)._1
+      (ans, score)
+    }).maxBy( pair => {
+      pair._2
+    })._1.map(identity)(collection.breakOut)
   }
 
-  def seqride(pos: Coord, time: Int, addMore : Int, ridesLeft : List[Ride]) : List[Ride] = {
-    if(addMore > 0 && ridesLeft.size > 0) {
-      val ride : Ride = null;
-      ride::seqride(pos, time, addMore - 1, ridesLeft)
+  def pickRide(coord: Coord, time: Int, rides: mutable.MutableList[Ride]): Ride = {
+    rides.map(ride => (ride, coord.dist(ride.start))).minBy(_._2)._1
+  }
+
+
+  def seqride(pos: Coord, time: Int, addMore: Int, ridesLeft: List[Ride]): List[Ride] = {
+    if (addMore > 0 && ridesLeft.size > 0) {
+      val ride: Ride = null;
+      ride :: seqride(pos, time, addMore - 1, ridesLeft)
     } else {
       List()
     }
   }
 
 
-  def timeWhenFinished
-
-
-  def simulate() : Unit = {
-    for(t <- 0 until T){
-
-      implicit val tt = t;
-      while(tryAssign()){}
-
-      for(car <- cars){
-        car.move()
-      }
-    }
-  }
-
   def maxScore() = rides.map(_.length + B).reduce(_ + _)
 
   def score() = cars.map(car => {
-      var time = 0
-      var score = 0;
-      var coord = new Coord()
+    var time = 0
+    var score = 0;
+    var coord = new Coord()
 
-      for(ride <- car.completedRides){
-        val metrics = ride.computeMetrics(coord, time)
-        val newTime = metrics.timeNeeded
-        val marginalCost = metrics.score
-        coord = ride.finish
-        time += newTime
-        score += marginalCost
-      }
+    for (ride <- car.completedRides) {
+      val metrics = ride.computeMetrics(coord, time)
+      val newTime = metrics.timeNeeded
+      val marginalCost = metrics.score
+      coord = ride.finish
+      time += newTime
+      score += marginalCost
+    }
 
-      score
-    }).reduce(_ + _)
-
-
-  def k(car: Car, ride: Ride)(implicit t : Int) = {
-    val timeToArriveToStart = t + car.current.dist(ride.start)
-    val apliedBonus = if(timeToArriveToStart == ride.ealiestStart) B else 0;
-    val profit = ride.length + apliedBonus
-    val delay = if(timeToArriveToStart < ride.ealiestStart)
-      ride.ealiestStart - timeToArriveToStart else 0;
-
-    Prop.k * delay - profit
-  }
+    score
+  }).reduce(_ + _)
 
 }

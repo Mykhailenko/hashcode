@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#gradle clean build
+gradle clean build
 
 for filepath in ./dataset/*; do
     filename=`basename "$filepath"`
