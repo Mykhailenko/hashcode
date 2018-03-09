@@ -27,18 +27,47 @@ class Simulator(val R: Int, val C: Int, val F: Int, val N: Int, val B: Int, val 
     if (!freeCars.isEmpty && !rides.isEmpty) {
       val car = freeCars.get(0).get;
 
-      val ride = rideForCar(car)
-      if(ride.isDefined){
-        car.planRides(List(ride.get));
-        rides = rides diff Seq(ride.get)
+      val rds = ridesForCar(car.current, t)
+      if(rds.isDefined){
+        car.planRides(rds.get);
+//        rides = rides diff Seq(ride.get)
         return true
       }
     }
+
+
     return false
   }
 
-  def rideForCar(car: Car)(implicit t: Int): Option[Ride] = {
-    val posibleRides = rides.map(ride => (ride, ride.computeMetrics(car.current, t, B)))
+  def ridesForCar(coord: Coord, currentTime: Int): Option[List[Ride]] = {
+//    rides.map(ride => {
+//      val m = ride.computeMetrics(coord, currentTime, B);
+//      val opride2 = rideForCar(ride.finish, currentTime + m.timeNeeded)
+//      if(opride2.isDefined && opride2.get.id != ride.id){
+//        (Seq(ride, opride2.get), profit(coord, currentTime, Seq(ride, opride2.get)))
+//      }else{
+//        (Seq(ride), profit(coord, currentTime, Seq(ride)))
+//      }
+//    }).maxBy(_._2)
+    null
+  }
+
+  def profit(from : Coord, currentTime : Int, rs : Seq[Ride]) : Int = {
+    var time = currentTime
+    var score = 0
+    var pos = from
+
+    for(ride <- rs){
+      val m = ride.computeMetrics(pos, time, B);
+      time = m.timeNeeded
+      score += m.score
+      pos = ride.finish
+    }
+    score
+  }
+
+  def rideForCar(coord: Coord, currentTime : Int): Option[Ride] = {
+    val posibleRides = rides.map(ride => (ride, ride.computeMetrics(coord, currentTime, B)))
       .filter(_._2.score > 0)
     if(!posibleRides.isEmpty){
       val minTime = posibleRides.minBy(_._2.timeToStart)._2.timeToStart
