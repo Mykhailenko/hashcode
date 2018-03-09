@@ -12,7 +12,6 @@ class Simulator(val R: Int, val C: Int, val F: Int, val N: Int, val B: Int, val 
 
   def simulate(): Unit = {
     for (t <- 0 until T) {
-      println("Time " + t)
       implicit val tt = t;
 
       while (tryAssign()) {}
@@ -24,63 +23,30 @@ class Simulator(val R: Int, val C: Int, val F: Int, val N: Int, val B: Int, val 
   }
 
   def tryAssign()(implicit t: Int): Boolean = {
-    println("tryAssign")
     val freeCars = cars.filter(_.isFree())
     if (!freeCars.isEmpty && !rides.isEmpty) {
       val car = freeCars.get(0).get;
-      val rds = rideForCar(car, 1)
-      rides = rides diff Seq(rds)
-      car.planRides(rds);
-      return true
+
+      val ride = rideForCar(car)
+      if(ride.isDefined){
+        car.planRides(List(ride.get));
+        rides = rides diff Seq(ride.get)
+        return true
+      }
     }
     return false
   }
 
-  def rideForCar(car: Car, desiredLen: Int)(implicit t: Int): List[Ride] = {
-    return rides.map(ride => {
-      var ans = new mutable.MutableList[Ride]
-      val first = ride
-      ans += first
-      var score = first.computeMetrics(car.current, t).score
+  def rideForCar(car: Car)(implicit t: Int): Option[Ride] = {
+    val posibleRides = rides.map(ride => (ride, ride.computeMetrics(car.current, t, B)))
+      .filter(_._2.score > 0)
+    if(!posibleRides.isEmpty){
+      val minTime = posibleRides.minBy(_._2.timeToStart)._2.timeToStart
 
-      var time = t
-      var coord = first.finish
-      var restLen = desiredLen - 1
-
-      while (restLen > 0 && rides.isEmpty) {
-        val newR: Ride = pickRide(coord, time, ans)
-        if (newR != null) {
-          ans += newR
-          val metr = newR.computeMetrics(coord, time, B)
-          time = metr.timeNeeded
-          coord = newR.finish
-          score += metr.score
-          restLen -= 1
-        }
-      }
-
-      (ans, score)
-    }).maxBy(pair => {
-      pair._2
-    })._1.map(identity)(collection.breakOut)
-  }
-
-  def pickRide(coord: Coord, time: Int, selected: mutable.MutableList[Ride]): Ride = {
-    val left = rides.diff(Seq(selected))
-    if(!left.isEmpty){
-      left.map(ride => (ride, coord.dist(ride.start))).minBy(_._2)._1
-    }else{
-      null
-    }
-  }
-
-
-  def seqride(pos: Coord, time: Int, addMore: Int, ridesLeft: List[Ride]): List[Ride] = {
-    if (addMore > 0 && ridesLeft.size > 0) {
-      val ride: Ride = null;
-      ride :: seqride(pos, time, addMore - 1, ridesLeft)
+      Some(posibleRides.filter(_._2.timeToStart == minTime)
+        .maxBy(_._2.score)._1)
     } else {
-      List()
+      None
     }
   }
 
@@ -93,7 +59,7 @@ class Simulator(val R: Int, val C: Int, val F: Int, val N: Int, val B: Int, val 
     var coord = new Coord()
 
     for (ride <- car.completedRides) {
-      val metrics = ride.computeMetrics(coord, time)
+      val metrics = ride.computeMetrics(coord, time, B)
       val newTime = metrics.timeNeeded
       val marginalCost = metrics.score
       coord = ride.finish

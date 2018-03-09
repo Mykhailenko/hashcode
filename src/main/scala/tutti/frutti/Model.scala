@@ -1,7 +1,6 @@
 package tutti.frutti
 
 import scala.collection.mutable
-import tutti.frutti.Utils._
 
 
 case class Coord(var r: Int = 0, var c: Int = 0) {
@@ -24,16 +23,28 @@ case class Ride(val id: Int,
   def length = start.dist(finish)
 
 
-  def computeMetrics (from: Coord, startTime: Int, bonus: Int = 0) = {
+  def computeMetrics (from: Coord, currentTime: Int, bonus: Int) = {
     val distanceTillStart = from.dist (this.start)
 
-    val timeToStart = startTime + distanceTillStart;
+    val timeToArriveToStart = currentTime + distanceTillStart;
 
-    val score = this.length + (if (timeToStart == this.ealiestStart) bonus else 0)
+    var delay = 0;
+    var score = 0;
 
-    val delay = onlyPositive (this.ealiestStart - timeToStart)
+    if(timeToArriveToStart <= ealiestStart){
+      delay = ealiestStart - timeToArriveToStart
+      score += bonus
+    }
 
-    val timeNeeded = timeToStart + delay + this.length
+    val timeToStart = distanceTillStart + delay
+
+    val timeNeeded = timeToStart + this.length
+
+    val finishedTime = timeNeeded + currentTime;
+
+    if(finishedTime < latestFinish){
+      score += length;
+    }
 
     CarRideMetrics (timeNeeded, timeToStart, delay, distanceTillStart, score);
   }
@@ -64,7 +75,7 @@ class Car(val id: Int,
 
   def assignRide(ride: Ride)(implicit t: Int) {
     this.current = ride.finish
-    this.rideTime = ride.computeMetrics(this.current, t).timeNeeded;
+    this.rideTime = ride.computeMetrics(this.current, t, 0).timeNeeded;
     this.ride = ride;
   }
 
