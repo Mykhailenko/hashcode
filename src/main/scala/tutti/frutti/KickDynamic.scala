@@ -9,67 +9,58 @@ object KickDynamic {
 
   def main(args: Array[String]): Unit = {
 
-    var userMap = new java.util.HashMap[String, Object]();
-    userMap.put("user", "Gleb")
-
-    println(userMap.get("user"))
+    var javaMap = new java.util.HashMap[String, Object]();
+    javaMap.put("user", "Gleb")
 
     var variables = Map[String, Object]();
     variables += ("name" -> "proactive")
-    //    variables += ("stockPrice" -> 1500)
     variables += ("now" -> new Date())
-    variables += "userMap" -> userMap
+    variables += "javaMap" -> javaMap
 
 
-    val wrapper = new MapWrapper(variables)
 
-    println("'gleb'.length : " + wrapper.get("userMap").get("user").length)
-    println("'gleb'.substring(1): " + wrapper.get("userMap").get("user").substring(1))
-    println("'error, no substringss' : " + wrapper.get("userMap").get("user").substringss(1))
+    val wrapper = new DynamicWrapper(variables)
+
+    println("'gleb'.length : " + wrapper.get("javaMap").get.get("user").length)
+    val d = wrapper.get("javaMap").get.get("user").length.reify
+
+    println("'gleb'.substring(1): " + wrapper.get("javaMap").get.get("user").substring(1))
+    println("'error, no substringss' : " + wrapper.get("javaMap").get.get("user").substringss(1))
   }
 }
 
+class DynamicWrapper(obj: Object) extends Dynamic {
 
-class MapWrapper(map: Map[String, Object]) {
+  def reify = obj
 
-  def get(key: String) = {
-    new VariableWrapper(map.get(key).get)
-  }
-}
-
-class VariableWrapper(obj: Object) extends Dynamic {
-
-  def applyDynamic(name: String)(args: Any*) = {
+  def applyDynamic(name: String)(args: Any*) : DynamicWrapper = {
 
     val candidates = obj.getClass.getMethods.filter(method => method.getName.equals(name))
 
-    val invoked = candidates.map(method => {
-      var res : Object = null
-      var worked = true
+    candidates.foreach(method => {
       try {
-
-        res = method.invoke(obj, args.map(_.asInstanceOf[AnyRef]) : _*)
+        if(args.size != 0){
+          return new DynamicWrapper(method.invoke(obj, args.map(_.asInstanceOf[AnyRef]): _*))
+        }else{
+          return new DynamicWrapper(method.invoke(obj))
+        }
       } catch {
-        case e : IllegalArgumentException => worked = false
-        case e : InvocationTargetException => throw e
+        case e: IllegalArgumentException => {}
+        case e: InvocationTargetException => throw e.getCause
+        case e: Exception => throw e
       }
-      (res, worked)
+    })
 
-    }).filter(pair => pair._2)
-    if(!invoked.isEmpty){
-      new VariableWrapper(invoked.head._1)
-    } else{
-      throw new NoSuchMethodException(s"Object $obj does not have method $name which takes: "
-        + args.map(_.toString).mkString(" "))
-    }
-
+    throw new NoSuchMethodException(s"Object $obj does not have method $name which takes: "
+      + args.map(_.toString).mkString(" "))
   }
 
-  override def toString() = {
-    obj.toString
-  }
+  def selectDynamic(name: String) : DynamicWrapper = applyDynamic(name)()
 
-  def selectDynamic(name: String) = {
-    obj.getClass.getMethod(name).invoke(obj)
-  }
+  override def toString: String = obj.toString
+
+  override def hashCode(): Int = obj.hashCode()
+
+  override def equals(obj: scala.Any): Boolean = obj.equals(obj)
+
 }
