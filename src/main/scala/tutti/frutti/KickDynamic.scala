@@ -7,6 +7,18 @@ import scala.language.dynamics
 
 object KickDynamic {
 
+  implicit def toDouble (dyn : DynamicWrapper) : Double = {
+    dyn.value.asInstanceOf[Any] match {
+      case d : Double => d.toDouble
+      case f : Float => f.toDouble
+      case l : Long => l.toDouble
+      case i: Int  => i.toDouble
+      case s : Short => s.toDouble
+      case b : Byte => b.toDouble
+    }
+  }
+
+
   def main(args: Array[String]): Unit = {
 
     var javaMap = new java.util.HashMap[String, Object]();
@@ -22,7 +34,13 @@ object KickDynamic {
     val wrapper = new DynamicWrapper(variables)
 
     println("'gleb'.length : " + wrapper.get("javaMap").get.get("user").length)
-    val d = wrapper.get("javaMap").get.get("user").length.reify
+
+    val len = wrapper.get("javaMap").get.get("user").length
+
+
+    println(5 + len)
+
+    println("6.5" + len)
 
     println("'gleb'.substring(1): " + wrapper.get("javaMap").get.get("user").substring(1))
     println("'error, no substringss' : " + wrapper.get("javaMap").get.get("user").substringss(1))
@@ -31,7 +49,9 @@ object KickDynamic {
 
 class DynamicWrapper(obj: Object) extends Dynamic {
 
-  def reify = obj
+  def value = obj
+
+
 
   def applyDynamic(name: String)(args: Any*) : DynamicWrapper = {
 
@@ -58,9 +78,5 @@ class DynamicWrapper(obj: Object) extends Dynamic {
   def selectDynamic(name: String) : DynamicWrapper = applyDynamic(name)()
 
   override def toString: String = obj.toString
-
-  override def hashCode(): Int = obj.hashCode()
-
-  override def equals(obj: scala.Any): Boolean = obj.equals(obj)
 
 }
