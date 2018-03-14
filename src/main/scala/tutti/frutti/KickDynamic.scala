@@ -1,5 +1,6 @@
 package tutti.frutti
 
+import java.lang.reflect.InvocationTargetException
 import java.util.Date
 
 import scala.language.dynamics
@@ -22,8 +23,9 @@ object KickDynamic {
 
     val wrapper = new MapWrapper(variables)
 
-    println("Name length " + wrapper.get("userMap").get("user").length)
-
+    println("'gleb'.length : " + wrapper.get("userMap").get("user").length)
+    println("'gleb'.substring(1): " + wrapper.get("userMap").get("user").substring(1))
+    println("'error, no substringss' : " + wrapper.get("userMap").get("user").substringss(1))
   }
 }
 
@@ -38,21 +40,29 @@ class MapWrapper(map: Map[String, Object]) {
 class VariableWrapper(obj: Object) extends Dynamic {
 
   def applyDynamic(name: String)(args: Any*) = {
+
     val candidates = obj.getClass.getMethods.filter(method => method.getName.equals(name))
 
-    val res = candidates.map(method => {
-      var res = null
+    val invoked = candidates.map(method => {
+      var res : Object = null
       var worked = true
-      try{
-        res = method.invoke(obj, args)
-      }catch(IllegalAccessException e){
-        worked = false
+      try {
+
+        res = method.invoke(obj, args.map(_.asInstanceOf[AnyRef]) : _*)
+      } catch {
+        case e : IllegalArgumentException => worked = false
+        case e : InvocationTargetException => throw e
       }
       (res, worked)
 
-    }).filter(pair => pair._2).head._1
+    }).filter(pair => pair._2)
+    if(!invoked.isEmpty){
+      new VariableWrapper(invoked.head._1)
+    } else{
+      throw new NoSuchMethodException(s"Object $obj does not have method $name which takes: "
+        + args.map(_.toString).mkString(" "))
+    }
 
-    new VariableWrapper(res)
   }
 
   override def toString() = {
